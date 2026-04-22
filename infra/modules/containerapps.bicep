@@ -153,7 +153,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AI_SEARCH_ENDPOINT',         secretRef: 'ai-search-endpoint' }
             { name: 'COSMOS_CONNECTION',          secretRef: 'cosmos-connection' }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
-            { name: 'USE_LOCAL_SECRETS',          value: 'false' }
+            { name: 'USE_LOCAL_SECRETS',          value: 'true' }  // skip JWT — ASWA handles auth
+            { name: 'AZURE_CLIENT_ID',            value: identity.properties.clientId }
           ]
         }
       ]
