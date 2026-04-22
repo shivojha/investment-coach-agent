@@ -21,10 +21,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Investment Coach API", version="1.0.0", lifespan=lifespan)
 
+ASWA_ORIGIN = "https://wonderful-moss-09a2daf0f.7.azurestaticapps.net"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://*.azurestaticapps.net",
+        ASWA_ORIGIN,
         "http://localhost:5173",
         "http://localhost:5174",
     ],
