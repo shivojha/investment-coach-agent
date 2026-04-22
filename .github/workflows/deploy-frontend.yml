@@ -48,6 +48,8 @@ jobs:
       # ── Build & deploy React app ─────────────────────────────────────────────
       - name: Build and deploy to Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
+        env:
+          VITE_API_URL: https://ca-investment-coach-demo.calmbay-97d9a5cf.eastus2.azurecontainerapps.io
         with:
           azure_static_web_apps_api_token: ${{ steps.swa-token.outputs.token }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
