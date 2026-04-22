@@ -4,13 +4,13 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # Azure OpenAI
     aoai_endpoint: str
-    aoai_api_key: str
+    aoai_api_key: str = ""           # not needed — using Managed Identity
     aoai_chat_deployment: str = "gpt-4o"
     aoai_embedding_deployment: str = "text-embedding-3-small"
 
     # Azure AI Search
     ai_search_endpoint: str
-    ai_search_key: str
+    ai_search_key: str = ""          # not needed — using Managed Identity
     ai_search_index: str = "user-profiles"
 
     # Azure Cosmos DB
@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     cosmos_database: str = "investment-coach"
     cosmos_container: str = "chat-history"
 
-    # Azure Entra ID
-    entra_tenant_id: str
-    entra_client_id: str
+    # Azure Entra ID — optional, auth handled by ASWA in production
+    entra_tenant_id: str = ""
+    entra_client_id: str = ""
 
     # App
     use_local_secrets: bool = False
