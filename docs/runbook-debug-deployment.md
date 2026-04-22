@@ -252,6 +252,46 @@ browser is now making a cross-origin request (ASWA domain → Container App doma
 
 ---
 
+## Issue 8 — VITE_API_URL not baked into frontend bundle
+
+### Symptom
+UI shows no response. Browser DevTools shows `405 Method Not Allowed` on `POST /v1/chat`.
+
+### Root Cause
+Two compounding problems:
+
+1. **CORS wildcard not supported** — `allow_origins=["https://*.azurestaticapps.net"]` silently fails in FastAPI's `CORSMiddleware`. It does exact string matching only; wildcard subdomains are not supported. The OPTIONS preflight returned `Disallowed CORS origin`, causing the browser to block the POST.
+
+2. **VITE_API_URL never reached Vite** — The variable was set in ASWA app settings (Azure portal), but the GitHub Actions workflow uses the `static-web-apps-deploy` action which runs its own Vite build inside the runner. ASWA app settings are only injected when Azure's own build system runs — not when GitHub Actions builds. So `import.meta.env.VITE_API_URL` resolved to `undefined`, and `API_BASE` was always an empty string, sending requests to the ASWA origin itself (which can't proxy to the backend on the free tier).
+
+### Fix
+
+**Fix 1 — Exact CORS origin in `backend/app/main.py`:**
+```python
+ASWA_ORIGIN = "https://wonderful-moss-09a2daf0f.7.azurestaticapps.net"
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[ASWA_ORIGIN, "http://localhost:5173", "http://localhost:5174"],
+    ...
+)
+```
+
+**Fix 2 — Pass `VITE_API_URL` directly to the build step in `.github/workflows/deploy-frontend.yml`:**
+```yaml
+- name: Build and deploy to Static Web Apps
+  uses: Azure/static-web-apps-deploy@v1
+  env:
+    VITE_API_URL: https://ca-investment-coach-demo.calmbay-97d9a5cf.eastus2.azurecontainerapps.io
+  with:
+    ...
+```
+
+### Why
+Vite replaces `import.meta.env.VITE_*` at **build time**, not runtime. The variable must be present as an OS environment variable in the process that runs `vite build`. ASWA app settings only reach Azure's own build pipeline — when GitHub Actions builds with `static-web-apps-deploy`, it needs the variable injected via `env:` on that step. FastAPI's CORSMiddleware does not interpret glob patterns; the origin must be an exact URL string.
+
+---
+
 ## Debugging Checklist for Future Issues
 
 ```
