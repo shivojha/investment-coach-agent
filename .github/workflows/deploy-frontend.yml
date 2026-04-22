@@ -1,0 +1,56 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+env:
+  RESOURCE_GROUP: rg-investment-coach-demo
+  SWA_NAME: swa-investment-coach-demo
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Azure login via OIDC ────────────────────────────────────────────────
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Fetch ASWA deployment token from Azure ───────────────────────────────
+      # Token is never stored in GitHub secrets — fetched fresh each deploy
+      - name: Get Static Web App deployment token
+        id: swa-token
+        run: |
+          token=$(az staticwebapp secrets list \
+            --name ${{ env.SWA_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> $GITHUB_OUTPUT
+
+      # ── Build & deploy React app ─────────────────────────────────────────────
+      - name: Build and deploy to Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa-token.outputs.token }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend       # Vite source
+          output_location: dist        # Vite build output
+          skip_app_build: false

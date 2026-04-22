@@ -1,0 +1,73 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-backend.yml'
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+  packages: write   # required to push to ghcr.io
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/investment-coach-api
+  CONTAINER_APP_NAME: ca-investment-coach-demo
+  RESOURCE_GROUP: rg-investment-coach-demo
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Azure login via OIDC ────────────────────────────────────────────────
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Build & push Docker image to ghcr.io ────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ── Deploy Bicep infrastructure ─────────────────────────────────────────
+      - name: Deploy infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ env.RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          parameters: >
+            containerImage=${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ghcrUsername=${{ github.actor }}
+            ghcrToken=${{ secrets.GITHUB_TOKEN }}
+            alertEmail=${{ secrets.ALERT_EMAIL }}
+
+      # ── Update Container App with new image ─────────────────────────────────
+      - name: Update Container App image
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }}
