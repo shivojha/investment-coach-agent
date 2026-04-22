@@ -71,11 +71,11 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
       indexingPolicy: {
         indexingMode: 'consistent'
         includedPaths: [
-          { path: '/user_id/?' }
-          { path: '/session_id/?' }
+          { path: '/*' }          // mandatory root path required by Cosmos DB
         ]
         excludedPaths: [
-          { path: '/turns/*' }  // don't index turn content — saves RUs + cost
+          { path: '/turns/*' }    // exclude turn content — saves RUs + cost
+          { path: '/"_etag"/?' }
         ]
       }
     }
