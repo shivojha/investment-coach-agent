@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env files
+.env
+*.env
+
+# Node
+node_modules/
+dist/
+
+# Private memory files
+docs/memory/
+
+# macOS
+.DS_Store
