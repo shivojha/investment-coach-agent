@@ -15,6 +15,9 @@ param env string = 'demo'
 @description('Azure region for all resources')
 param location string = 'eastus2'
 
+@description('Region for AI Search — free tier not available in eastus2')
+param searchLocation string = 'eastus'
+
 @description('Existing Azure OpenAI endpoint — reused from demo instance')
 param aoaiEndpoint string = 'https://ershi-mn10asmm-eastus2.cognitiveservices.azure.com/'
 
@@ -50,7 +53,7 @@ module search 'modules/search.bicep' = {
   name: 'search'
   params: {
     name: 'srch-${prefix}-${env}'
-    location: location
+    location: searchLocation   // eastus — free tier not available in eastus2
   }
 }
 
