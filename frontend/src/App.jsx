@@ -4,6 +4,7 @@ import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
 
 const SESSION_ID = uuidv4()
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 export default function App() {
   const [messages, setMessages] = useState([])
@@ -23,7 +24,7 @@ export default function App() {
     setMessages(prev => [...prev, assistantMsg])
 
     try {
-      const res = await fetch('/v1/chat', {
+      const res = await fetch(`${API_BASE}/v1/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: SESSION_ID, message: text }),

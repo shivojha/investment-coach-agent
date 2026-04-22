@@ -23,9 +23,14 @@ app = FastAPI(title="Investment Coach API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://*.azurestaticapps.net", "http://localhost:5174"],
+    allow_origins=[
+        "https://*.azurestaticapps.net",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ],
     allow_methods=["GET", "POST"],
     allow_headers=["Authorization", "Content-Type"],
+    allow_credentials=True,
 )
 
 app.include_router(health.router, prefix="/v1")
