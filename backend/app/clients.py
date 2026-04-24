@@ -93,7 +93,9 @@ class AppClients:
             print("Cosmos DB: not configured — using in-memory chat history.")
 
     async def ensure_search_index(self) -> None:
-        """Create the user-profiles index if it doesn't already exist."""
+        """Create the user-profiles index if it doesn't already exist.
+        Non-fatal — app starts even if index creation fails.
+        """
         if not self.search_index_client:
             return
         index_name = settings.ai_search_index
@@ -101,8 +103,11 @@ class AppClients:
             await self.search_index_client.get_index(index_name)
             print(f"AI Search: index '{index_name}' already exists.")
         except Exception:
-            await self.search_index_client.create_index(_build_index(index_name))
-            print(f"AI Search: index '{index_name}' created.")
+            try:
+                await self.search_index_client.create_index(_build_index(index_name))
+                print(f"AI Search: index '{index_name}' created.")
+            except Exception as e:
+                print(f"AI Search: could not create index '{index_name}': {e}. Falling back to in-memory.")
 
     async def get_cosmos_container(self):
         if not self._use_cosmos:
