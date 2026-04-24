@@ -12,6 +12,7 @@ from app.routers import chat, health
 async def lifespan(app: FastAPI):
     # ── Startup: create singleton clients once ─────────────────────────────
     client_module.clients = AppClients()
+    await client_module.clients.ensure_search_index()
     print("Azure clients initialised.")
     yield
     # ── Shutdown: close connections cleanly ───────────────────────────────

@@ -3,6 +3,17 @@ from azure.identity.aio import DefaultAzureCredential
 from azure.identity import get_bearer_token_provider, DefaultAzureCredential as SyncCredential
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.indexes.aio import SearchIndexClient
+from azure.search.documents.indexes.models import (
+    SearchIndex,
+    SearchField,
+    SearchFieldDataType,
+    SimpleField,
+    SearchableField,
+    VectorSearch,
+    HnswAlgorithmConfiguration,
+    VectorSearchProfile,
+    SearchField as VectorField,
+)
 
 from app.config import settings
 
@@ -11,6 +22,29 @@ _PLACEHOLDER = "placeholder"
 
 def _is_configured(value: str) -> bool:
     return bool(value) and _PLACEHOLDER not in value and "<" not in value
+
+
+def _build_index(name: str) -> SearchIndex:
+    """Define the user-profiles index schema."""
+    return SearchIndex(
+        name=name,
+        fields=[
+            SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+            SearchableField(name="profile_text", type=SearchFieldDataType.String),
+            SimpleField(name="profile_json", type=SearchFieldDataType.String, filterable=False),
+            VectorField(
+                name="profile_vector",
+                type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+                searchable=True,
+                vector_search_dimensions=1536,   # text-embedding-3-small output size
+                vector_search_profile_name="hnsw-profile",
+            ),
+        ],
+        vector_search=VectorSearch(
+            algorithms=[HnswAlgorithmConfiguration(name="hnsw")],
+            profiles=[VectorSearchProfile(name="hnsw-profile", algorithm_configuration_name="hnsw")],
+        ),
+    )
 
 
 class AppClients:
@@ -57,6 +91,18 @@ class AppClients:
             self.cosmos_client = None
             self._use_cosmos = False
             print("Cosmos DB: not configured — using in-memory chat history.")
+
+    async def ensure_search_index(self) -> None:
+        """Create the user-profiles index if it doesn't already exist."""
+        if not self.search_index_client:
+            return
+        index_name = settings.ai_search_index
+        try:
+            await self.search_index_client.get_index(index_name)
+            print(f"AI Search: index '{index_name}' already exists.")
+        except Exception:
+            await self.search_index_client.create_index(_build_index(index_name))
+            print(f"AI Search: index '{index_name}' created.")
 
     async def get_cosmos_container(self):
         if not self._use_cosmos:

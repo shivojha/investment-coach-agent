@@ -1,10 +1,16 @@
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncAzureOpenAI
 
 from app.config import settings
 
+_token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(),
+    "https://cognitiveservices.azure.com/.default",
+)
+
 _client = AsyncAzureOpenAI(
     azure_endpoint=settings.aoai_endpoint,
-    api_key=settings.aoai_api_key,
+    azure_ad_token_provider=_token_provider,
     api_version="2024-02-01",
 )
 
