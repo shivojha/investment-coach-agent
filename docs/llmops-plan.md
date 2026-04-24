@@ -8,8 +8,8 @@ Tracks implementation progress, tradeoffs, and decisions for each LLMOps capabil
 
 | Step | Capability | Status |
 |---|---|---|
-| 1 | LLM Tracing — SK OpenTelemetry → App Insights | ⏳ In Progress |
-| 2 | Token cost tracking per request / user | ⬜ Pending |
+| 1 | LLM Tracing — SK OpenTelemetry → App Insights | ✅ Done |
+| 2 | Token cost tracking per request / user | ⏳ In Progress |
 | 3 | Content Safety guardrails | ⬜ Pending |
 | 4 | Prompt versioning — Azure AI Foundry | ⬜ Pending |
 | 5 | Evaluation & quality metrics | ⬜ Pending |

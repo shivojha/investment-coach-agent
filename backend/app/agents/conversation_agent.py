@@ -7,6 +7,7 @@ from semantic_kernel.contents import ChatHistory
 
 from app.config import settings
 from app.plugins.user_profile import UserProfilePlugin
+from app.token_tracking import record_token_usage
 
 SYSTEM_PROMPT = """
 You are a friendly, expert investment coach helping users plan their financial future.
@@ -94,6 +95,7 @@ class ConversationAgent:
         self.history.add_user_message(augmented)
 
         full_response = ""
+        last_metadata = {}
         async for chunk in self._chat_service.get_streaming_chat_message_content(
             chat_history=self.history,
             settings=self._settings,
@@ -102,5 +104,18 @@ class ConversationAgent:
             if chunk and chunk.content:
                 full_response += chunk.content
                 yield chunk.content
+            if chunk and chunk.metadata:
+                last_metadata = chunk.metadata  # last chunk carries usage stats
 
         self.history.add_assistant_message(full_response)
+
+        # Emit token usage after stream completes
+        usage = last_metadata.get("usage")
+        if usage:
+            record_token_usage(
+                user_id=self.user_id,
+                session_id=last_metadata.get("id", "unknown"),
+                agent="conversation",
+                prompt_tokens=getattr(usage, "prompt_tokens", 0),
+                completion_tokens=getattr(usage, "completion_tokens", 0),
+            )
