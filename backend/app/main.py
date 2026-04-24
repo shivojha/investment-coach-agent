@@ -9,16 +9,18 @@ from app.config import settings
 from app.routers import chat, health
 from app.telemetry import setup_telemetry
 
+# ── Telemetry must be configured before app creation ─────────────────────────
+# configure_azure_monitor patches the OTel SDK globally — must run at import time
+# so FastAPI request instrumentation is wired before the first request arrives
+setup_telemetry(settings.applicationinsights_connection_string)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup: configure tracing first, then clients ─────────────────────
-    setup_telemetry(settings.applicationinsights_connection_string)
     client_module.clients = AppClients()
     await client_module.clients.ensure_search_index()
     print("Azure clients initialised.")
     yield
-    # ── Shutdown: close connections cleanly ───────────────────────────────
     await client_module.clients.close()
     print("Azure clients closed.")
 
