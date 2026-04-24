@@ -25,7 +25,9 @@ def setup_telemetry() -> None:
     os.environ.setdefault("SEMANTICKERNEL_EXPERIMENTAL_GENAI_ENABLE_OTEL_DIAGNOSTICS", "true")
     os.environ.setdefault("SEMANTICKERNEL_EXPERIMENTAL_GENAI_ENABLE_OTEL_DIAGNOSTICS_SENSITIVE", "true")
 
-    from azure.monitor.opentelemetry import configure_azure_monitor
-    configure_azure_monitor()   # auto-reads APPLICATIONINSIGHTS_CONNECTION_STRING from env
-
-    print("Telemetry: OTel → App Insights configured.")
+    try:
+        from azure.monitor.opentelemetry import configure_azure_monitor
+        configure_azure_monitor()   # auto-reads APPLICATIONINSIGHTS_CONNECTION_STRING from env
+        print("Telemetry: OTel → App Insights configured.")
+    except Exception as e:
+        print(f"Telemetry: configure_azure_monitor failed — {e}")
