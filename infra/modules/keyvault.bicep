@@ -26,6 +26,14 @@ param searchEndpoint string
 @secure()   // marks as sensitive — never logged or shown in portal
 param cosmosConnection string
 
+@description('Service Bus connection string')
+@secure()
+param serviceBusConnection string
+
+@description('Alpha Vantage API key for market data')
+@secure()
+param alphaVantageApiKey string
+
 // ── Key Vault ─────────────────────────────────────────────────────────────────
 
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
@@ -86,6 +94,22 @@ resource secretCosmosConnection 'Microsoft.KeyVault/vaults/secrets@2023-07-01' =
   name: 'cosmos-connection'
   properties: {
     value: cosmosConnection
+  }
+}
+
+resource secretServiceBusConnection 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: kv
+  name: 'servicebus-connection'
+  properties: {
+    value: serviceBusConnection
+  }
+}
+
+resource secretAlphaVantageApiKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: kv
+  name: 'alpha-vantage-api-key'
+  properties: {
+    value: alphaVantageApiKey
   }
 }
 

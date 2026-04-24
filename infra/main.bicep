@@ -43,11 +43,23 @@ param alertEmail string
 @description('Monthly budget threshold in USD — alert triggers at 50/80/100%')
 param monthlyBudgetUsd int = 15
 
+@description('Alpha Vantage API key for live market data')
+@secure()
+param alphaVantageApiKey string
+
 // ── Naming convention ─────────────────────────────────────────────────────────
 
 var prefix = 'investment-coach'
 
 // ── Modules ───────────────────────────────────────────────────────────────────
+
+module servicebus 'modules/servicebus.bicep' = {
+  name: 'servicebus'
+  params: {
+    name: 'sb-${prefix}-${env}'
+    location: location
+  }
+}
 
 module search 'modules/search.bicep' = {
   name: 'search'
@@ -78,6 +90,11 @@ module keyvault 'modules/keyvault.bicep' = {
       resourceId('Microsoft.DocumentDB/databaseAccounts', 'cosmos-${prefix}-${env}'),
       '2024-05-15'
     ).connectionStrings[0].connectionString
+    serviceBusConnection: listKeys(
+      resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', 'sb-${prefix}-${env}', 'RootManageSharedAccessKey'),
+      '2022-10-01-preview'
+    ).primaryConnectionString
+    alphaVantageApiKey: alphaVantageApiKey
   }
 }
 
@@ -127,3 +144,5 @@ output cosmosAccountName string = cosmos.outputs.accountName
 output keyVaultName string = keyvault.outputs.name
 output containerAppFqdn string = containerapps.outputs.fqdn
 output staticWebAppUrl string = staticwebapp.outputs.url
+output serviceBusNamespace string = servicebus.outputs.namespaceName
+output serviceBusQueue string = servicebus.outputs.queueName

@@ -135,6 +135,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/secrets/cosmos-connection'
           identity: identity.id
         }
+        {
+          name: 'servicebus-connection'
+          keyVaultUrl: 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/secrets/servicebus-connection'
+          identity: identity.id
+        }
+        {
+          name: 'alpha-vantage-api-key'
+          keyVaultUrl: 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/secrets/alpha-vantage-api-key'
+          identity: identity.id
+        }
       ]
     }
     template: {
@@ -152,6 +162,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AOAI_EMBEDDING_DEPLOYMENT',  secretRef: 'aoai-embedding-deployment' }
             { name: 'AI_SEARCH_ENDPOINT',         secretRef: 'ai-search-endpoint' }
             { name: 'COSMOS_CONNECTION',          secretRef: 'cosmos-connection' }
+            { name: 'SERVICEBUS_CONNECTION',      secretRef: 'servicebus-connection' }
+            { name: 'ALPHA_VANTAGE_API_KEY',      secretRef: 'alpha-vantage-api-key' }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
             { name: 'USE_LOCAL_SECRETS',          value: 'true' }  // skip JWT — ASWA handles auth
             { name: 'AZURE_CLIENT_ID',            value: identity.properties.clientId }

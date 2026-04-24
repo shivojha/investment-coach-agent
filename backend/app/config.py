@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     cosmos_database: str = "investment-coach"
     cosmos_container: str = "chat-history"
 
+    # Azure Service Bus
+    servicebus_connection: str = ""
+    servicebus_queue: str = "session-ended"
+
+    # Alpha Vantage — live market data
+    alpha_vantage_api_key: str = ""
+
     # Azure Entra ID — optional, auth handled by ASWA in production
     entra_tenant_id: str = ""
     entra_client_id: str = ""
