@@ -53,6 +53,14 @@ var prefix = 'investment-coach'
 
 // ── Modules ───────────────────────────────────────────────────────────────────
 
+module contentsafety 'modules/contentsafety.bicep' = {
+  name: 'contentsafety'
+  params: {
+    name: 'cs-${prefix}-${env}'
+    location: location
+  }
+}
+
 module servicebus 'modules/servicebus.bicep' = {
   name: 'servicebus'
   params: {
@@ -92,6 +100,8 @@ module keyvault 'modules/keyvault.bicep' = {
     ).connectionStrings[0].connectionString
     serviceBusNamespaceName: servicebus.outputs.namespaceName  // implicit dependsOn — listKeys runs after namespace exists
     alphaVantageApiKey: alphaVantageApiKey
+    contentSafetyEndpoint: contentsafety.outputs.endpoint
+    contentSafetyName: contentsafety.outputs.name
   }
 }
 

@@ -33,6 +33,12 @@ param serviceBusNamespaceName string
 @secure()
 param alphaVantageApiKey string
 
+@description('Azure Content Safety endpoint')
+param contentSafetyEndpoint string
+
+@description('Azure Content Safety resource name — key fetched via listKeys')
+param contentSafetyName string
+
 // ── Key Vault ─────────────────────────────────────────────────────────────────
 
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
@@ -112,6 +118,25 @@ resource secretAlphaVantageApiKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01'
   name: 'alpha-vantage-api-key'
   properties: {
     value: alphaVantageApiKey
+  }
+}
+
+resource secretContentSafetyEndpoint 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: kv
+  name: 'content-safety-endpoint'
+  properties: {
+    value: contentSafetyEndpoint
+  }
+}
+
+resource secretContentSafetyKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: kv
+  name: 'content-safety-key'
+  properties: {
+    value: listKeys(
+      resourceId('Microsoft.CognitiveServices/accounts', contentSafetyName),
+      '2024-04-01-preview'
+    ).key1
   }
 }
 

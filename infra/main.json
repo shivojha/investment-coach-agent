@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "10386693669080295831"
+      "templateHash": "15877388837460301753"
     }
   },
   "parameters": {
@@ -94,6 +94,76 @@
     "prefix": "investment-coach"
   },
   "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "contentsafety",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('cs-{0}-{1}', variables('prefix'), parameters('env'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "5210580929506129032"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Content Safety resource"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2024-04-01-preview",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "kind": "ContentSafety",
+              "sku": {
+                "name": "F0"
+              },
+              "properties": {
+                "publicNetworkAccess": "Enabled",
+                "customSubDomainName": "[parameters('name')]"
+              }
+            }
+          ],
+          "outputs": {
+            "endpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), '2024-04-01-preview').endpoint]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            }
+          }
+        }
+      }
+    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -427,6 +497,12 @@
           },
           "alphaVantageApiKey": {
             "value": "[parameters('alphaVantageApiKey')]"
+          },
+          "contentSafetyEndpoint": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'contentsafety'), '2025-04-01').outputs.endpoint.value]"
+          },
+          "contentSafetyName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'contentsafety'), '2025-04-01').outputs.name.value]"
           }
         },
         "template": {
@@ -436,7 +512,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "16821596859352383894"
+              "templateHash": "9493501865355273187"
             }
           },
           "parameters": {
@@ -492,6 +568,18 @@
               "type": "securestring",
               "metadata": {
                 "description": "Alpha Vantage API key for market data"
+              }
+            },
+            "contentSafetyEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Content Safety endpoint"
+              }
+            },
+            "contentSafetyName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Content Safety resource name — key fetched via listKeys"
               }
             }
           },
@@ -590,6 +678,28 @@
               "dependsOn": [
                 "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
               ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'content-safety-endpoint')]",
+              "properties": {
+                "value": "[parameters('contentSafetyEndpoint')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'content-safety-key')]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('contentSafetyName')), '2024-04-01-preview').key1]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
             }
           ],
           "outputs": {
@@ -605,6 +715,7 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'contentsafety')]",
         "[resourceId('Microsoft.Resources/deployments', 'search')]",
         "[resourceId('Microsoft.Resources/deployments', 'servicebus')]"
       ]
@@ -756,7 +867,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "7967758524343270802"
+              "templateHash": "17992802271035990097"
             }
           },
           "parameters": {
@@ -917,6 +1028,16 @@
                       "name": "alpha-vantage-api-key",
                       "keyVaultUrl": "[format('https://{0}{1}/secrets/alpha-vantage-api-key', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
                       "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name')))]"
+                    },
+                    {
+                      "name": "content-safety-endpoint",
+                      "keyVaultUrl": "[format('https://{0}{1}/secrets/content-safety-endpoint', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name')))]"
+                    },
+                    {
+                      "name": "content-safety-key",
+                      "keyVaultUrl": "[format('https://{0}{1}/secrets/content-safety-key', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name')))]"
                     }
                   ]
                 },
@@ -957,6 +1078,14 @@
                         {
                           "name": "ALPHA_VANTAGE_API_KEY",
                           "secretRef": "alpha-vantage-api-key"
+                        },
+                        {
+                          "name": "CONTENT_SAFETY_ENDPOINT",
+                          "secretRef": "content-safety-endpoint"
+                        },
+                        {
+                          "name": "CONTENT_SAFETY_KEY",
+                          "secretRef": "content-safety-key"
                         },
                         {
                           "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
