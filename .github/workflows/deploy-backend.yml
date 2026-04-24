@@ -64,6 +64,7 @@ jobs:
             ghcrUsername=${{ github.actor }}
             ghcrToken=${{ secrets.GITHUB_TOKEN }}
             alertEmail=${{ secrets.ALERT_EMAIL }}
+            alphaVantageApiKey=${{ secrets.ALPHA_VANTAGE_API_KEY }}
 
       # ── Update Container App with new image ─────────────────────────────────
       - name: Update Container App image
