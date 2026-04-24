@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     entra_tenant_id: str = ""
     entra_client_id: str = ""
 
+    # Observability
+    applicationinsights_connection_string: str = ""
+
     # App
     use_local_secrets: bool = False
     chat_history_max_turns: int = 20

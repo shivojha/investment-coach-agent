@@ -5,12 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import app.clients as client_module
 from app.clients import AppClients
+from app.config import settings
 from app.routers import chat, health
+from app.telemetry import setup_telemetry
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup: create singleton clients once ─────────────────────────────
+    # ── Startup: configure tracing first, then clients ─────────────────────
+    setup_telemetry(settings.applicationinsights_connection_string)
     client_module.clients = AppClients()
     await client_module.clients.ensure_search_index()
     print("Azure clients initialised.")
