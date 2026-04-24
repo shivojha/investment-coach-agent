@@ -90,10 +90,7 @@ module keyvault 'modules/keyvault.bicep' = {
       resourceId('Microsoft.DocumentDB/databaseAccounts', 'cosmos-${prefix}-${env}'),
       '2024-05-15'
     ).connectionStrings[0].connectionString
-    serviceBusConnection: listKeys(
-      resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', 'sb-${prefix}-${env}', 'RootManageSharedAccessKey'),
-      '2022-10-01-preview'
-    ).primaryConnectionString
+    serviceBusNamespaceName: servicebus.outputs.namespaceName  // implicit dependsOn — listKeys runs after namespace exists
     alphaVantageApiKey: alphaVantageApiKey
   }
 }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "9290274482201648087"
+      "templateHash": "10386693669080295831"
     }
   },
   "parameters": {
@@ -21,6 +21,13 @@
       "defaultValue": "eastus2",
       "metadata": {
         "description": "Azure region for all resources"
+      }
+    },
+    "searchLocation": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "Region for AI Search — free tier not available in eastus2"
       }
     },
     "aoaiEndpoint": {
@@ -75,12 +82,98 @@
       "metadata": {
         "description": "Monthly budget threshold in USD — alert triggers at 50/80/100%"
       }
+    },
+    "alphaVantageApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Alpha Vantage API key for live market data"
+      }
     }
   },
   "variables": {
     "prefix": "investment-coach"
   },
   "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "servicebus",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('sb-{0}-{1}', variables('prefix'), parameters('env'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "1063148890428213201"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Service Bus namespace"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ServiceBus/namespaces",
+              "apiVersion": "2022-10-01-preview",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Basic",
+                "tier": "Basic"
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/queues",
+              "apiVersion": "2022-10-01-preview",
+              "name": "[format('{0}/{1}', parameters('name'), 'session-ended')]",
+              "properties": {
+                "maxDeliveryCount": 3,
+                "lockDuration": "PT1M",
+                "defaultMessageTimeToLive": "P1D",
+                "deadLetteringOnMessageExpiration": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "namespaceName": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "queueName": {
+              "type": "string",
+              "value": "session-ended"
+            }
+          }
+        }
+      }
+    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -95,7 +188,7 @@
             "value": "[format('srch-{0}-{1}', variables('prefix'), parameters('env'))]"
           },
           "location": {
-            "value": "[parameters('location')]"
+            "value": "[parameters('searchLocation')]"
           }
         },
         "template": {
@@ -185,7 +278,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "17110555548312609728"
+              "templateHash": "16534252578555867486"
             }
           },
           "parameters": {
@@ -266,15 +359,15 @@
                     "indexingMode": "consistent",
                     "includedPaths": [
                       {
-                        "path": "/user_id/?"
-                      },
-                      {
-                        "path": "/session_id/?"
+                        "path": "/*"
                       }
                     ],
                     "excludedPaths": [
                       {
                         "path": "/turns/*"
+                      },
+                      {
+                        "path": "/\"_etag\"/?"
                       }
                     ]
                   }
@@ -328,6 +421,12 @@
           },
           "cosmosConnection": {
             "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos-{0}-{1}', variables('prefix'), parameters('env'))), '2024-05-15').connectionStrings[0].connectionString]"
+          },
+          "serviceBusNamespaceName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'servicebus'), '2025-04-01').outputs.namespaceName.value]"
+          },
+          "alphaVantageApiKey": {
+            "value": "[parameters('alphaVantageApiKey')]"
           }
         },
         "template": {
@@ -337,7 +436,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "16511403070001681217"
+              "templateHash": "16821596859352383894"
             }
           },
           "parameters": {
@@ -381,6 +480,18 @@
               "type": "securestring",
               "metadata": {
                 "description": "Cosmos DB connection string"
+              }
+            },
+            "serviceBusNamespaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Service Bus namespace name — connection string fetched internally via listKeys"
+              }
+            },
+            "alphaVantageApiKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Alpha Vantage API key for market data"
               }
             }
           },
@@ -457,6 +568,28 @@
               "dependsOn": [
                 "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
               ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'servicebus-connection')]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', parameters('serviceBusNamespaceName'), 'RootManageSharedAccessKey'), '2022-10-01-preview').primaryConnectionString]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'alpha-vantage-api-key')]",
+              "properties": {
+                "value": "[parameters('alphaVantageApiKey')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
             }
           ],
           "outputs": {
@@ -472,7 +605,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'search')]"
+        "[resourceId('Microsoft.Resources/deployments', 'search')]",
+        "[resourceId('Microsoft.Resources/deployments', 'servicebus')]"
       ]
     },
     {
@@ -622,7 +756,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "17686576329290853697"
+              "templateHash": "7967758524343270802"
             }
           },
           "parameters": {
@@ -773,6 +907,16 @@
                       "name": "cosmos-connection",
                       "keyVaultUrl": "[format('https://{0}{1}/secrets/cosmos-connection', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
                       "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name')))]"
+                    },
+                    {
+                      "name": "servicebus-connection",
+                      "keyVaultUrl": "[format('https://{0}{1}/secrets/servicebus-connection', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name')))]"
+                    },
+                    {
+                      "name": "alpha-vantage-api-key",
+                      "keyVaultUrl": "[format('https://{0}{1}/secrets/alpha-vantage-api-key', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name')))]"
                     }
                   ]
                 },
@@ -807,12 +951,24 @@
                           "secretRef": "cosmos-connection"
                         },
                         {
+                          "name": "SERVICEBUS_CONNECTION",
+                          "secretRef": "servicebus-connection"
+                        },
+                        {
+                          "name": "ALPHA_VANTAGE_API_KEY",
+                          "secretRef": "alpha-vantage-api-key"
+                        },
+                        {
                           "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
                           "value": "[parameters('appInsightsConnectionString')]"
                         },
                         {
                           "name": "USE_LOCAL_SECRETS",
-                          "value": "false"
+                          "value": "true"
+                        },
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}', parameters('name'))), '2023-01-31').clientId]"
                         }
                       ]
                     }
@@ -1089,6 +1245,14 @@
     "staticWebAppUrl": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'staticwebapp'), '2025-04-01').outputs.url.value]"
+    },
+    "serviceBusNamespace": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'servicebus'), '2025-04-01').outputs.namespaceName.value]"
+    },
+    "serviceBusQueue": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'servicebus'), '2025-04-01').outputs.queueName.value]"
     }
   }
 }

@@ -26,9 +26,8 @@ param searchEndpoint string
 @secure()   // marks as sensitive — never logged or shown in portal
 param cosmosConnection string
 
-@description('Service Bus connection string')
-@secure()
-param serviceBusConnection string
+@description('Service Bus namespace name — connection string fetched internally via listKeys')
+param serviceBusNamespaceName string
 
 @description('Alpha Vantage API key for market data')
 @secure()
@@ -101,7 +100,10 @@ resource secretServiceBusConnection 'Microsoft.KeyVault/vaults/secrets@2023-07-0
   parent: kv
   name: 'servicebus-connection'
   properties: {
-    value: serviceBusConnection
+    value: listKeys(
+      resourceId('Microsoft.ServiceBus/namespaces/authorizationRules', serviceBusNamespaceName, 'RootManageSharedAccessKey'),
+      '2022-10-01-preview'
+    ).primaryConnectionString
   }
 }
 

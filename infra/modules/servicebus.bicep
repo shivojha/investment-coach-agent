@@ -34,6 +34,5 @@ resource queue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
 
 // ── Outputs ───────────────────────────────────────────────────────────────────
 
-output connectionStringSecretName string = 'servicebus-connection'
 output namespaceName string = namespace.name
 output queueName string = queue.name
