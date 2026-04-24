@@ -12,12 +12,12 @@ SYSTEM_PROMPT = """
 You are a friendly, expert investment coach helping users plan their financial future.
 
 Your behaviour:
-- On first contact greet the user warmly and ask profiling questions one at a time:
+- The user's saved profile is injected below — treat it as ground truth.
+  Skip any questions already answered in the profile.
+- On first contact (empty profile) greet warmly and ask profiling questions one at a time:
   age, income range, risk tolerance, investment goals, time horizon, existing assets.
-- Use ProfilePlugin.get_profile() at the start of every conversation to check
-  if the user already has a saved profile. Skip questions already answered.
-- After the user shares profile information, call ProfilePlugin.save_profile()
-  to persist it immediately.
+- After the user shares new profile information, call ProfilePlugin.save_profile()
+  immediately to persist it.
 - Once you have enough profile data, give tailored investment suggestions
   (asset classes and allocation strategy — not specific stock picks).
 - If market research findings are provided in the context, use them to ground
@@ -41,12 +41,14 @@ def _build_kernel(token_provider) -> Kernel:
 
 class ConversationAgent:
     """Streams a personalised response to the user.
-    Receives market research findings from the Orchestrator as extra context.
+    Profile is pre-loaded by the Orchestrator and injected into the system prompt.
+    Market context is injected when the user mentions a ticker symbol.
     """
 
     def __init__(self, user_id: str, history: ChatHistory, search_client, token_provider):
         self.user_id = user_id
         self.history = history
+        self._search_client = search_client
 
         self.kernel = _build_kernel(token_provider)
         self.kernel.add_plugin(
@@ -63,15 +65,24 @@ class ConversationAgent:
     async def stream(
         self,
         user_message: str,
+        profile: str = "",
         market_context: str = "",
     ) -> AsyncGenerator[str, None]:
-        """Stream a response. market_context is injected when a ticker was detected."""
+        """Stream a response.
+        profile    — pre-loaded by Orchestrator, injected into system prompt
+        market_context — injected when a ticker was detected
+        """
         if not self.history.messages:
+            profile_section = (
+                f"\n\n[User Profile]\n{profile}"
+                if profile and profile != "No profile yet."
+                else "\n\n[User Profile]\nNo profile yet — ask profiling questions one at a time."
+            )
             self.history.add_system_message(
-                SYSTEM_PROMPT + f"\nCurrent user_id: {self.user_id}"
+                SYSTEM_PROMPT + profile_section + f"\n\nuser_id: {self.user_id}"
             )
 
-        # Inject market research as a system note before the user message
+        # Inject market research as a note before the user message
         if market_context:
             augmented = (
                 f"[Market Research]\n{market_context}\n\n"
